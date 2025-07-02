@@ -70,19 +70,14 @@ class AuthService {
 
   async signIn(identifier: string, password: string): Promise<AuthResult> {
     try {
-      // Try email login first
-      const emailResult = await supabase.auth.signInWithPassword({
-        email: identifier,
-        password
-      });
+      console.log('Attempting sign in with identifier:', identifier);
       
-      // If email login succeeds, return
-      if (!emailResult.error) {
-        return { error: null };
-      }
+      // Always try email login first (whether it's email or username)
+      let loginEmail = identifier;
       
-      // If identifier doesn't contain @ and email login failed, try username lookup
+      // If identifier doesn't contain @, try to find email by username
       if (!identifier.includes('@')) {
+        console.log('Identifier appears to be username, looking up email...');
         try {
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
@@ -90,23 +85,49 @@ class AuthService {
             .eq('username', identifier)
             .maybeSingle();
             
-          if (!profileError && profileData?.email) {
-            const usernameResult = await supabase.auth.signInWithPassword({
-              email: profileData.email,
-              password
-            });
-            
-            if (!usernameResult.error) {
-              return { error: null };
-            }
+          if (profileError) {
+            console.error('Profile lookup error:', profileError);
+            return { error: { message: 'Invalid username or password' } };
           }
+          
+          if (!profileData?.email) {
+            console.log('No profile found for username:', identifier);
+            return { error: { message: 'Invalid username or password' } };
+          }
+          
+          loginEmail = profileData.email;
+          console.log('Found email for username:', loginEmail);
         } catch (usernameError) {
           console.error('Username lookup error:', usernameError);
+          return { error: { message: 'Invalid username or password' } };
         }
       }
+
+      // Attempt login with the email
+      console.log('Attempting login with email:', loginEmail);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password
+      });
       
-      // Return the original email login error
-      return { error: { message: emailResult.error.message } };
+      if (error) {
+        console.error('Login error:', error);
+        // Provide user-friendly error messages
+        if (error.message.includes('Invalid login credentials')) {
+          return { error: { message: 'Invalid email/username or password' } };
+        }
+        if (error.message.includes('Email not confirmed')) {
+          return { error: { message: 'Please check your email and click the confirmation link before signing in' } };
+        }
+        return { error: { message: error.message } };
+      }
+
+      if (data.user) {
+        console.log('Login successful for user:', data.user.id);
+        return { error: null };
+      }
+
+      return { error: { message: 'Login failed - no user data returned' } };
       
     } catch (error: any) {
       console.error('Signin error:', error);

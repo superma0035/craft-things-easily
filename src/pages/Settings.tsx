@@ -9,21 +9,21 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Building, Lock, Mail, AlertTriangle, Trash2 } from 'lucide-react';
+import { User, Building, Lock, Mail, AlertTriangle, Trash2, CreditCard, Shield } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import PhoneInput from '@/components/PhoneInput';
 import ContactSupportModal from '@/components/ContactSupportModal';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const Settings = () => {
   const { profile, user, refreshProfile } = useAuth();
   const { data: restaurants, refetch: refetchRestaurants } = useRestaurants();
+  const { subscriptionStatus, isLoading: subscriptionLoading, createCheckoutSession, openCustomerPortal, refreshSubscriptionStatus } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('profile');
 
   // Profile form states
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [username, setUsername] = useState(profile?.username || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
 
   // Restaurant form states
   const [restaurantName, setRestaurantName] = useState(restaurants?.[0]?.name || '');
@@ -45,7 +45,6 @@ const Settings = () => {
         .update({
           full_name: fullName,
           username: username,
-          phone: phone,
         })
         .eq('id', user?.id);
 
@@ -224,13 +223,6 @@ const Settings = () => {
             />
             <p className="text-xs text-gray-500">Email cannot be changed</p>
           </div>
-          <PhoneInput
-            value={phone}
-            onChange={setPhone}
-            label="Phone Number"
-            required
-            placeholder="Enter your phone number"
-          />
           <Button type="submit" disabled={loading} className="bg-amber-500 hover:bg-amber-600">
             {loading ? 'Updating...' : 'Update Profile'}
           </Button>
@@ -346,6 +338,119 @@ const Settings = () => {
     </Card>
   );
 
+  const renderSubscriptionSection = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CreditCard className="w-5 h-5" />
+          Subscription & Billing
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {subscriptionLoading ? (
+          <div className="text-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading subscription status...</p>
+          </div>
+        ) : (
+          <>
+            {/* Current Subscription Status */}
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {subscriptionStatus?.subscribed ? 'Premium Plan' : 'Free Plan'}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {subscriptionStatus?.subscribed 
+                      ? `${subscriptionStatus.subscription_tier} subscription` 
+                      : 'Upgrade to unlock premium features'
+                    }
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    subscriptionStatus?.subscribed 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {subscriptionStatus?.subscribed ? 'Active' : 'Free'}
+                  </div>
+                  {subscriptionStatus?.subscription_end && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Renews {new Date(subscriptionStatus.subscription_end).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {subscriptionStatus?.subscribed ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <Shield className="w-4 h-4" />
+                    <span>Premium features enabled</span>
+                  </div>
+                  <Button
+                    onClick={() => openCustomerPortal()}
+                    disabled={subscriptionLoading}
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                  >
+                    Manage Subscription
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-sm text-gray-600">
+                    <p>Upgrade to Premium and unlock:</p>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Unlimited menu items</li>
+                      <li>Advanced analytics</li>
+                      <li>Custom branding</li>
+                      <li>Priority support</li>
+                    </ul>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      onClick={() => createCheckoutSession({ mode: 'subscription' })}
+                      disabled={subscriptionLoading}
+                      className="bg-amber-500 hover:bg-amber-600"
+                    >
+                      {subscriptionLoading ? 'Processing...' : 'Upgrade to Premium'}
+                    </Button>
+                    <Button
+                      onClick={() => refreshSubscriptionStatus()}
+                      disabled={subscriptionLoading}
+                      variant="outline"
+                    >
+                      Refresh Status
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Billing History */}
+            <div className="border-t pt-6">
+              <h4 className="font-medium mb-3">Billing & Invoices</h4>
+              <p className="text-gray-600 text-sm mb-4">
+                Manage your billing information and view payment history through our secure customer portal.
+              </p>
+              <Button
+                onClick={() => openCustomerPortal()}
+                disabled={subscriptionLoading}
+                variant="outline"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                View Billing Portal
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   const renderContactSection = () => (
     <Card>
       <CardHeader>
@@ -431,28 +536,39 @@ const Settings = () => {
                         >
                           Password
                         </button>
-                        <button
-                          onClick={() => setActiveSection('support')}
-                          className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                            activeSection === 'support' 
-                              ? 'bg-amber-500 text-white' 
-                              : 'text-gray-700 hover:bg-amber-50'
-                          }`}
-                        >
-                          Support
-                        </button>
+                         <button
+                           onClick={() => setActiveSection('subscription')}
+                           className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                             activeSection === 'subscription' 
+                               ? 'bg-amber-500 text-white' 
+                               : 'text-gray-700 hover:bg-amber-50'
+                           }`}
+                         >
+                           Subscription
+                         </button>
+                         <button
+                           onClick={() => setActiveSection('support')}
+                           className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                             activeSection === 'support' 
+                               ? 'bg-amber-500 text-white' 
+                               : 'text-gray-700 hover:bg-amber-50'
+                           }`}
+                         >
+                           Support
+                         </button>
                       </nav>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Settings Content */}
-                <div className="lg:col-span-3">
-                  {activeSection === 'profile' && renderProfileSection()}
-                  {activeSection === 'restaurant' && renderRestaurantSection()}
-                  {activeSection === 'password' && renderPasswordSection()}
-                  {activeSection === 'support' && renderContactSection()}
-                </div>
+                 {/* Settings Content */}
+                 <div className="lg:col-span-3">
+                   {activeSection === 'profile' && renderProfileSection()}
+                   {activeSection === 'restaurant' && renderRestaurantSection()}
+                   {activeSection === 'password' && renderPasswordSection()}
+                   {activeSection === 'subscription' && renderSubscriptionSection()}
+                   {activeSection === 'support' && renderContactSection()}
+                 </div>
               </div>
             </div>
           </main>

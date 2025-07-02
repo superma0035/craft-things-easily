@@ -45,6 +45,8 @@ const CustomerMenu = () => {
 
   // Validate required params and redirect if missing
   useEffect(() => {
+    console.log('Current params:', { restaurantId, tableNumber });
+    
     if (!restaurantId || !tableNumber) {
       console.error('Missing required parameters:', { restaurantId, tableNumber });
       toast({
@@ -52,8 +54,25 @@ const CustomerMenu = () => {
         description: "The QR code appears to be invalid. Please scan a valid restaurant QR code.",
         variant: "destructive",
       });
-      navigate('/');
+      // Add a small delay before redirect to ensure the error is visible
+      setTimeout(() => navigate('/'), 2000);
+      return;
     }
+
+    // Validate that restaurantId is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(restaurantId)) {
+      console.error('Invalid restaurant ID format:', restaurantId);
+      toast({
+        title: "Invalid Restaurant ID",
+        description: "The restaurant ID in the QR code is invalid.",
+        variant: "destructive",
+      });
+      setTimeout(() => navigate('/'), 2000);
+      return;
+    }
+
+    console.log('Parameters validated successfully');
   }, [restaurantId, tableNumber, navigate, toast]);
 
   const fetchMenuItems = async (): Promise<MenuItem[]> => {

@@ -120,7 +120,7 @@ const CustomerMenu = () => {
         .select('id, name, description')
         .eq('id', restaurantId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Supabase error fetching restaurant:', error);

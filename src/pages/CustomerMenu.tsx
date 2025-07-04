@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import MenuHeader from '@/components/customer/MenuHeader';
-import MenuSearch from '@/components/customer/MenuSearch';
-import MenuGrid from '@/components/customer/MenuGrid';
-import CartModal from '@/components/customer/CartModal';
+import MobileMenuHeader from '@/components/customer/MobileMenuHeader';
+import MobileMenuSearch from '@/components/customer/MobileMenuSearch';
+import MobileMenuGrid from '@/components/customer/MobileMenuGrid';
+import MobileCartModal from '@/components/customer/MobileCartModal';
+import OrderStatusTracker from '@/components/customer/OrderStatusTracker';
 
 interface MenuItem {
   id: string;
@@ -371,7 +372,7 @@ const CustomerMenu = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      <MenuHeader 
+      <MobileMenuHeader 
         restaurant={restaurant}
         tableNumber={tableNumber}
         cartTotal={cartTotal}
@@ -380,26 +381,21 @@ const CustomerMenu = () => {
         sessionTimeLeft={sessionTimeLeft}
       />
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-4 gap-6">
-          <MenuSearch 
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            menuItemsCount={menuItems.length}
-            cartItemCount={cartItemCount}
-          />
+      <MobileMenuSearch 
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        menuItemsCount={menuItems.length}
+      />
 
-          <MenuGrid 
-            popularItems={popularItems}
-            filteredItems={filteredItems}
-            onAddToCart={addToCart}
-            isLoading={menuItemsLoading}
-            searchTerm={searchTerm}
-          />
-        </div>
-      </div>
+      <MobileMenuGrid 
+        popularItems={popularItems}
+        filteredItems={filteredItems}
+        onAddToCart={addToCart}
+        isLoading={menuItemsLoading}
+        searchTerm={searchTerm}
+      />
 
-      <CartModal 
+      <MobileCartModal 
         open={showCart}
         onOpenChange={setShowCart}
         cart={cart}
@@ -408,6 +404,11 @@ const CustomerMenu = () => {
         onPlaceOrder={() => placeOrderMutation.mutate()}
         onGenerateBill={() => setShowBillDialog(true)}
         isPlacingOrder={placeOrderMutation.isPending}
+      />
+
+      <OrderStatusTracker 
+        restaurantId={restaurantId!}
+        tableNumber={tableNumber!}
       />
 
       <AlertDialog open={showBillDialog} onOpenChange={setShowBillDialog}>

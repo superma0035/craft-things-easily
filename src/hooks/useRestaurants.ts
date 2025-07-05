@@ -55,9 +55,11 @@ export const useCreateRestaurant = () => {
           owner_id: user.id
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error || !data) {
+        throw error || new Error('Failed to create restaurant');
+      }
       return data;
     },
     onSuccess: () => {

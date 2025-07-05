@@ -309,11 +309,11 @@ const CustomerMenu = () => {
         .from('orders')
         .insert(orderData)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (orderError) {
+      if (orderError || !order) {
         console.error('Error creating order:', orderError);
-        throw new Error(`Failed to create order: ${orderError.message}`);
+        throw new Error(`Failed to create order: ${orderError?.message || 'Order creation failed'}`);
       }
 
       // Add order items

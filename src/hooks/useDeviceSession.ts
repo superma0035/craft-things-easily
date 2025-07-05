@@ -46,6 +46,10 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
       if (storedSession) {
         try {
           const parsed: DeviceSession = JSON.parse(storedSession);
+          if (!parsed.startTime || !parsed.expiresAt) {
+            localStorage.removeItem(sessionKey);
+            throw new Error('Invalid session data');
+          }
           parsed.startTime = new Date(parsed.startTime);
           parsed.expiresAt = new Date(parsed.expiresAt);
 
@@ -61,6 +65,8 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
           }
         } catch (error) {
           console.error('Error parsing stored session:', error);
+          // Remove corrupted session data
+          localStorage.removeItem(sessionKey);
         }
       }
 
@@ -97,19 +103,28 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
 
   const getAllTableSessions = (restaurantId: string, tableNumber: string): DeviceSession[] => {
     const sessions: DeviceSession[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(`table-session-${restaurantId}-${tableNumber}`)) {
+    const sessionPrefix = `table-session-${restaurantId}-${tableNumber}`;
+    
+    // More efficient way to get specific keys
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(sessionPrefix)) {
         try {
-          const session = JSON.parse(localStorage.getItem(key) || '');
-          session.startTime = new Date(session.startTime);
-          session.expiresAt = new Date(session.expiresAt);
-          sessions.push(session);
+          const sessionData = localStorage.getItem(key);
+          if (sessionData) {
+            const session = JSON.parse(sessionData);
+            if (session && session.startTime && session.expiresAt) {
+              session.startTime = new Date(session.startTime);
+              session.expiresAt = new Date(session.expiresAt);
+              sessions.push(session);
+            }
+          }
         } catch (error) {
           console.error('Error parsing session:', error);
+          // Remove corrupted session data
+          localStorage.removeItem(key);
         }
       }
-    }
+    });
     return sessions;
   };
 

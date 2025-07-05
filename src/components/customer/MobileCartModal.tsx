@@ -37,11 +37,14 @@ const MobileCartModal = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-sm mx-auto max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5" />
-              Your Cart
-            </DialogTitle>
-          </DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5" />
+            Your Cart
+          </DialogTitle>
+          <DialogDescription>
+            Your cart is currently empty
+          </DialogDescription>
+        </DialogHeader>
           <div className="text-center py-8">
             <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 mb-2">Your cart is empty</p>
@@ -61,7 +64,7 @@ const MobileCartModal = ({
             Your Cart ({cart.length} items)
           </DialogTitle>
           <DialogDescription>
-            Review your order before placing
+            Review your order before placing it
           </DialogDescription>
         </DialogHeader>
 

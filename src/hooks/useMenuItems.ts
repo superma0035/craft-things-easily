@@ -58,11 +58,11 @@ export const useCreateMenuItem = () => {
         .from('menu_items')
         .insert([menuItem])
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      if (error || !data) {
         console.error('Error creating menu item:', error);
-        throw error;
+        throw error || new Error('Failed to create menu item');
       }
 
       return data;

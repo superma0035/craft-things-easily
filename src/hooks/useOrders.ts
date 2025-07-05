@@ -50,9 +50,11 @@ export const useUpdateOrderStatus = () => {
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', orderId)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error || !data) {
+        throw error || new Error('Failed to update order status');
+      }
       return data;
     },
     onSuccess: () => {

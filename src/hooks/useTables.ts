@@ -56,9 +56,11 @@ export const useCreateTable = () => {
           qr_code: qrData
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error || !data) {
+        throw error || new Error('Failed to create table');
+      }
       return data;
     },
     onSuccess: (_, variables) => {

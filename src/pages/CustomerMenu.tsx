@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { useDeviceSession } from '@/hooks/useDeviceSession';
 import MobileMenuHeader from '@/components/customer/MobileMenuHeader';
 import MobileMenuSearch from '@/components/customer/MobileMenuSearch';
 import MobileMenuGrid from '@/components/customer/MobileMenuGrid';
 import MobileCartModal from '@/components/customer/MobileCartModal';
 import OrderStatusTracker from '@/components/customer/OrderStatusTracker';
+import OrderHistory from '@/components/customer/OrderHistory';
+import DeviceTakeoverModal from '@/components/customer/DeviceTakeoverModal';
 
 interface MenuItem {
   id: string;
@@ -40,9 +43,67 @@ const CustomerMenu = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCart, setShowCart] = useState(false);
-  const [sessionTimeLeft, setSessionTimeLeft] = useState(7200); // 2 hours in seconds
   const [showBillDialog, setShowBillDialog] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
+  const [showTakeoverModal, setShowTakeoverModal] = useState(false);
+
+  // Device session management
+  const { 
+    session, 
+    deviceIp, 
+    isMainDevice, 
+    sessionLoading, 
+    takeOverSession, 
+    endSession, 
+    getTimeLeft 
+  } = useDeviceSession(restaurantId, tableNumber);
+
+  // Refresh confirmation
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (cart.length > 0 || (session && isMainDevice)) {
+        e.preventDefault();
+        e.returnValue = 'You have items in your cart or an active session. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [cart.length, session, isMainDevice]);
+
+  // Session timer using device session
+  const [sessionTimeLeft, setSessionTimeLeft] = useState(0);
+  
+  useEffect(() => {
+    if (!session) return;
+
+    const updateTimer = () => {
+      const timeLeft = getTimeLeft();
+      setSessionTimeLeft(timeLeft);
+      
+      if (timeLeft <= 0) {
+        toast({
+          title: "Session Expired",
+          description: "Your dining session has expired.",
+          variant: "destructive",
+        });
+        endSession();
+        navigate('/');
+      }
+    };
+
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, [session, getTimeLeft, endSession, navigate, toast]);
+
+  // Show takeover modal if not main device
+  useEffect(() => {
+    if (!sessionLoading && session && !isMainDevice) {
+      setShowTakeoverModal(true);
+    }
+  }, [session, isMainDevice, sessionLoading]);
 
   // Validate required params and redirect if missing
   useEffect(() => {
@@ -165,26 +226,6 @@ const CustomerMenu = () => {
     refetchOnReconnect: true,
   });
 
-  // Session timer with better error handling
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSessionTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          toast({
-            title: "Session Expired",
-            description: "Your dining session has expired. Redirecting to home page.",
-            variant: "destructive",
-          });
-          navigate('/');
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [navigate, toast]);
-
   // Connection error recovery
   useEffect(() => {
     if (connectionError) {
@@ -199,6 +240,15 @@ const CustomerMenu = () => {
   }, [connectionError, refetchRestaurant, refetchMenuItems]);
 
   const addToCart = (item: MenuItem) => {
+    if (!isMainDevice) {
+      toast({
+        title: "Not Authorized",
+        description: "Only the main device can place orders. Take control to order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log('Adding to cart:', item.name);
     setCart(prevCart => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
@@ -381,6 +431,16 @@ const CustomerMenu = () => {
         sessionTimeLeft={sessionTimeLeft}
       />
 
+      <div className="px-4 pb-4">
+        {session && (
+          <OrderHistory 
+            restaurantId={restaurantId}
+            tableNumber={tableNumber}
+            sessionStartTime={session.startTime}
+          />
+        )}
+      </div>
+
       <MobileMenuSearch 
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -409,6 +469,14 @@ const CustomerMenu = () => {
       <OrderStatusTracker 
         restaurantId={restaurantId!}
         tableNumber={tableNumber!}
+      />
+
+      <DeviceTakeoverModal
+        open={showTakeoverModal}
+        onOpenChange={setShowTakeoverModal}
+        onTakeOver={takeOverSession}
+        tableNumber={tableNumber || ''}
+        currentDeviceIp={deviceIp}
       />
 
       <AlertDialog open={showBillDialog} onOpenChange={setShowBillDialog}>

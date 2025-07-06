@@ -44,6 +44,23 @@ export const useCreateTable = () => {
 
   return useMutation({
     mutationFn: async (tableData: CreateTableData) => {
+      // Check if table already exists
+      const { data: existingTable, error: checkError } = await supabase
+        .from('tables')
+        .select('id')
+        .eq('restaurant_id', tableData.restaurant_id)
+        .eq('table_number', tableData.table_number)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (checkError) {
+        throw checkError;
+      }
+
+      if (existingTable) {
+        throw new Error(`Table ${tableData.table_number} already exists for this restaurant`);
+      }
+
       // Generate QR code data (simplified - in real app you'd use a QR library)
       const qrData = `${window.location.origin}/order/${tableData.restaurant_id}/${tableData.table_number}`;
       

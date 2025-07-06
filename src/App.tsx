@@ -48,6 +48,7 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/order/:restaurantId/:tableNumber" element={<CustomerMenu />} />
+                <Route path="/menu/:restaurantId/:tableNumber" element={<CustomerMenu />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

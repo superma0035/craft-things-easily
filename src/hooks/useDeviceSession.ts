@@ -40,7 +40,7 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
     }
 
     const initializeSession = async () => {
-      const sessionKey = `table-session-${restaurantId}-${tableNumber}`;
+      const sessionKey = `table-session-${restaurantId}-${tableNumber}-${deviceIp}`;
       const storedSession = localStorage.getItem(sessionKey);
 
       if (storedSession) {
@@ -75,11 +75,11 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
       const activeSession = existingSessions.find(s => new Date() < s.expiresAt);
 
       if (activeSession && activeSession.deviceIp !== deviceIp) {
-        // Another device has an active session
+        // Another device has an active session - this device is not main
         setIsMainDevice(false);
         setSession(activeSession);
       } else {
-        // Create new session for this device
+        // This is the first device or taking over expired session
         const newSession: DeviceSession = {
           sessionId: `${restaurantId}-${tableNumber}-${Date.now()}`,
           deviceIp,
@@ -103,11 +103,11 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
 
   const getAllTableSessions = (restaurantId: string, tableNumber: string): DeviceSession[] => {
     const sessions: DeviceSession[] = [];
-    const sessionPrefix = `table-session-${restaurantId}-${tableNumber}`;
     
-    // More efficient way to get specific keys
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith(sessionPrefix)) {
+    // Check all possible session keys for this table
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(`table-session-${restaurantId}-${tableNumber}`)) {
         try {
           const sessionData = localStorage.getItem(key);
           if (sessionData) {
@@ -115,21 +115,35 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
             if (session && session.startTime && session.expiresAt) {
               session.startTime = new Date(session.startTime);
               session.expiresAt = new Date(session.expiresAt);
-              sessions.push(session);
+              
+              // Only include active sessions
+              if (new Date() < session.expiresAt) {
+                sessions.push(session);
+              } else {
+                // Remove expired sessions
+                localStorage.removeItem(key);
+              }
             }
           }
         } catch (error) {
           console.error('Error parsing session:', error);
           // Remove corrupted session data
-          localStorage.removeItem(key);
+          if (key) localStorage.removeItem(key);
         }
       }
-    });
+    }
     return sessions;
   };
 
   const takeOverSession = () => {
     if (!restaurantId || !tableNumber || !deviceIp) return;
+
+    // Remove all other sessions for this table to prevent conflicts
+    const allSessions = getAllTableSessions(restaurantId, tableNumber);
+    allSessions.forEach(oldSession => {
+      const oldKey = `table-session-${restaurantId}-${tableNumber}-${oldSession.deviceIp}`;
+      localStorage.removeItem(oldKey);
+    });
 
     const newSession: DeviceSession = {
       sessionId: `${restaurantId}-${tableNumber}-${Date.now()}`,
@@ -141,7 +155,7 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
       expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000)
     };
 
-    const sessionKey = `table-session-${restaurantId}-${tableNumber}`;
+    const sessionKey = `table-session-${restaurantId}-${tableNumber}-${deviceIp}`;
     localStorage.setItem(sessionKey, JSON.stringify(newSession));
     setSession(newSession);
     setIsMainDevice(true);
@@ -150,7 +164,8 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
   const endSession = () => {
     if (!restaurantId || !tableNumber) return;
 
-    const sessionKey = `table-session-${restaurantId}-${tableNumber}`;
+    // Remove session for this specific device
+    const sessionKey = `table-session-${restaurantId}-${tableNumber}-${deviceIp}`;
     localStorage.removeItem(sessionKey);
     setSession(null);
     setIsMainDevice(false);

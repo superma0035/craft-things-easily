@@ -98,12 +98,12 @@ const CustomerMenu = () => {
     return () => clearInterval(timer);
   }, [session, getTimeLeft, endSession, navigate, toast]);
 
-  // Show takeover modal if not main device
+  // Show takeover modal if not main device and has active session from another device
   useEffect(() => {
-    if (!sessionLoading && session && !isMainDevice) {
+    if (!sessionLoading && session && !isMainDevice && session.deviceIp !== deviceIp) {
       setShowTakeoverModal(true);
     }
-  }, [session, isMainDevice, sessionLoading]);
+  }, [session, isMainDevice, sessionLoading, deviceIp]);
 
   // Validate required params and redirect if missing
   useEffect(() => {
@@ -240,7 +240,7 @@ const CustomerMenu = () => {
   }, [connectionError, refetchRestaurant, refetchMenuItems]);
 
   const addToCart = (item: MenuItem) => {
-    if (!isMainDevice) {
+    if (!session || !isMainDevice) {
       toast({
         title: "Not Authorized",
         description: "Only the main device can place orders. Take control to order.",

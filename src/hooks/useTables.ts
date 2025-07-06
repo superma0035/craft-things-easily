@@ -44,13 +44,12 @@ export const useCreateTable = () => {
 
   return useMutation({
     mutationFn: async (tableData: CreateTableData) => {
-      // Check if table already exists
+      // Check if there's an inactive table we can reactivate
       const { data: existingTable, error: checkError } = await supabase
         .from('tables')
-        .select('id')
+        .select('*')
         .eq('restaurant_id', tableData.restaurant_id)
         .eq('table_number', tableData.table_number)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (checkError) {
@@ -58,10 +57,29 @@ export const useCreateTable = () => {
       }
 
       if (existingTable) {
-        throw new Error(`Table ${tableData.table_number} already exists for this restaurant`);
+        if (existingTable.is_active) {
+          throw new Error(`Table ${tableData.table_number} already exists and is active`);
+        } else {
+          // Reactivate the existing inactive table
+          const { data: reactivatedTable, error: updateError } = await supabase
+            .from('tables')
+            .update({
+              is_active: true,
+              capacity: tableData.capacity || existingTable.capacity,
+              qr_code: `${window.location.origin}/order/${tableData.restaurant_id}/${tableData.table_number}`
+            })
+            .eq('id', existingTable.id)
+            .select()
+            .maybeSingle();
+
+          if (updateError || !reactivatedTable) {
+            throw updateError || new Error('Failed to reactivate table');
+          }
+          return reactivatedTable;
+        }
       }
 
-      // Generate QR code data (simplified - in real app you'd use a QR library)
+      // Create new table if none exists
       const qrData = `${window.location.origin}/order/${tableData.restaurant_id}/${tableData.table_number}`;
       
       const { data, error } = await supabase

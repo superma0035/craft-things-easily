@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DeviceSession {
-  sessionId: string;
+  id: string;
+  sessionToken: string;
   deviceIp: string;
   tableNumber: string;
   restaurantId: string;
   startTime: Date;
   isMainDevice: boolean;
   expiresAt: Date;
+  orderData: any[];
 }
 
 export const useDeviceSession = (restaurantId?: string, tableNumber?: string) => {
@@ -16,159 +18,210 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
   const [deviceIp, setDeviceIp] = useState<string>('');
   const [isMainDevice, setIsMainDevice] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionToken, setSessionToken] = useState<string>('');
 
-  // Get device IP
+  // Get device IP and create session token
   useEffect(() => {
-    const getDeviceIp = async () => {
+    const getDeviceInfo = async () => {
       try {
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
-        setDeviceIp(data.ip);
+        const ip = data.ip;
+        setDeviceIp(ip);
+        
+        // Create unique session token
+        const token = `${ip}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setSessionToken(token);
       } catch (error) {
         console.error('Failed to get IP:', error);
-        setDeviceIp(`fallback-${Date.now()}`);
+        const fallbackIp = `fallback-${Date.now()}`;
+        setDeviceIp(fallbackIp);
+        const token = `${fallbackIp}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setSessionToken(token);
       }
     };
-    getDeviceIp();
+    getDeviceInfo();
   }, []);
 
   // Initialize or restore session
   useEffect(() => {
-    if (!restaurantId || !tableNumber || !deviceIp) {
+    if (!restaurantId || !tableNumber || !deviceIp || !sessionToken) {
       setSessionLoading(false);
       return;
     }
 
     const initializeSession = async () => {
-      const sessionKey = `table-session-${restaurantId}-${tableNumber}-${deviceIp}`;
-      const storedSession = localStorage.getItem(sessionKey);
+      try {
+        // Clean up expired sessions first
+        await supabase.rpc('cleanup_expired_sessions');
 
-      if (storedSession) {
-        try {
-          const parsed: DeviceSession = JSON.parse(storedSession);
-          if (!parsed.startTime || !parsed.expiresAt) {
-            localStorage.removeItem(sessionKey);
-            throw new Error('Invalid session data');
-          }
-          parsed.startTime = new Date(parsed.startTime);
-          parsed.expiresAt = new Date(parsed.expiresAt);
+        // Check for existing active sessions for this table
+        const { data: existingSessions, error: fetchError } = await supabase
+          .from('device_sessions')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .eq('table_number', tableNumber)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: true });
 
-          // Check if session is still valid
-          if (new Date() < parsed.expiresAt) {
-            // Check if this is the same device
-            if (parsed.deviceIp === deviceIp) {
-              setSession(parsed);
-              setIsMainDevice(parsed.isMainDevice);
-              setSessionLoading(false);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error parsing stored session:', error);
-          // Remove corrupted session data
-          localStorage.removeItem(sessionKey);
+        if (fetchError) {
+          console.error('Error fetching sessions:', fetchError);
+          setSessionLoading(false);
+          return;
         }
+
+        const mainDeviceSession = existingSessions?.find(s => s.is_main_device);
+
+        if (mainDeviceSession && mainDeviceSession.device_ip !== deviceIp) {
+          // Another device is the main device
+          setSession({
+            id: mainDeviceSession.id,
+            sessionToken: mainDeviceSession.session_token,
+            deviceIp: mainDeviceSession.device_ip,
+            tableNumber: mainDeviceSession.table_number,
+            restaurantId: mainDeviceSession.restaurant_id,
+            startTime: new Date(mainDeviceSession.created_at),
+            isMainDevice: false,
+            expiresAt: new Date(mainDeviceSession.expires_at),
+            orderData: Array.isArray(mainDeviceSession.order_data) ? mainDeviceSession.order_data : []
+          });
+          setIsMainDevice(false);
+        } else {
+          // This device can become the main device
+          const { data: newSession, error: createError } = await supabase
+            .from('device_sessions')
+            .insert({
+              restaurant_id: restaurantId,
+              table_number: tableNumber,
+              device_ip: deviceIp,
+              session_token: sessionToken,
+              is_main_device: true,
+              expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error creating session:', createError);
+            setSessionLoading(false);
+            return;
+          }
+
+          setSession({
+            id: newSession.id,
+            sessionToken: newSession.session_token,
+            deviceIp: newSession.device_ip,
+            tableNumber: newSession.table_number,
+            restaurantId: newSession.restaurant_id,
+            startTime: new Date(newSession.created_at),
+            isMainDevice: true,
+            expiresAt: new Date(newSession.expires_at),
+            orderData: Array.isArray(newSession.order_data) ? newSession.order_data : []
+          });
+          setIsMainDevice(true);
+        }
+      } catch (error) {
+        console.error('Error initializing session:', error);
+      } finally {
+        setSessionLoading(false);
       }
-
-      // Create new session or check for existing session from another device
-      const existingSessions = getAllTableSessions(restaurantId, tableNumber);
-      const activeSession = existingSessions.find(s => new Date() < s.expiresAt);
-
-      if (activeSession && activeSession.deviceIp !== deviceIp) {
-        // Another device has an active session - this device is not main
-        setIsMainDevice(false);
-        setSession(activeSession);
-      } else {
-        // This is the first device or taking over expired session
-        const newSession: DeviceSession = {
-          sessionId: `${restaurantId}-${tableNumber}-${Date.now()}`,
-          deviceIp,
-          tableNumber,
-          restaurantId,
-          startTime: new Date(),
-          isMainDevice: true,
-          expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000) // 2 hours
-        };
-
-        localStorage.setItem(sessionKey, JSON.stringify(newSession));
-        setSession(newSession);
-        setIsMainDevice(true);
-      }
-
-      setSessionLoading(false);
     };
 
     initializeSession();
-  }, [restaurantId, tableNumber, deviceIp]);
+  }, [restaurantId, tableNumber, deviceIp, sessionToken]);
 
-  const getAllTableSessions = (restaurantId: string, tableNumber: string): DeviceSession[] => {
-    const sessions: DeviceSession[] = [];
-    
-    // Check all possible session keys for this table
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(`table-session-${restaurantId}-${tableNumber}`)) {
-        try {
-          const sessionData = localStorage.getItem(key);
-          if (sessionData) {
-            const session = JSON.parse(sessionData);
-            if (session && session.startTime && session.expiresAt) {
-              session.startTime = new Date(session.startTime);
-              session.expiresAt = new Date(session.expiresAt);
-              
-              // Only include active sessions
-              if (new Date() < session.expiresAt) {
-                sessions.push(session);
-              } else {
-                // Remove expired sessions
-                localStorage.removeItem(key);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error parsing session:', error);
-          // Remove corrupted session data
-          if (key) localStorage.removeItem(key);
-        }
+  const takeOverSession = async () => {
+    if (!restaurantId || !tableNumber || !deviceIp || !sessionToken) return;
+
+    try {
+      // Create new session for this device
+      const { data: newSession, error: createError } = await supabase
+        .from('device_sessions')
+        .insert({
+          restaurant_id: restaurantId,
+          table_number: tableNumber,
+          device_ip: deviceIp,
+          session_token: sessionToken,
+          is_main_device: false, // Start as non-main, will be updated by transfer function
+          expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating new session:', createError);
+        return;
       }
+
+      // Find the current main device session
+      const { data: currentMainSession } = await supabase
+        .from('device_sessions')
+        .select('session_token')
+        .eq('restaurant_id', restaurantId)
+        .eq('table_number', tableNumber)
+        .eq('is_main_device', true)
+        .single();
+
+      if (currentMainSession) {
+        // Transfer main device status using the database function
+        const { data: transferResult, error: transferError } = await supabase
+          .rpc('transfer_main_device', {
+            old_session_token: currentMainSession.session_token,
+            new_session_token: sessionToken
+          });
+
+        if (transferError) {
+          console.error('Error transferring session:', transferError);
+          return;
+        }
+      } else {
+        // No current main device, just update this session to be main
+        await supabase
+          .from('device_sessions')
+          .update({ is_main_device: true })
+          .eq('session_token', sessionToken);
+      }
+
+      // Update local state
+      setSession(prev => prev ? { ...prev, isMainDevice: true } : null);
+      setIsMainDevice(true);
+    } catch (error) {
+      console.error('Error taking over session:', error);
     }
-    return sessions;
   };
 
-  const takeOverSession = () => {
-    if (!restaurantId || !tableNumber || !deviceIp) return;
+  const endSession = async () => {
+    if (!sessionToken) return;
 
-    // Remove all other sessions for this table to prevent conflicts
-    const allSessions = getAllTableSessions(restaurantId, tableNumber);
-    allSessions.forEach(oldSession => {
-      const oldKey = `table-session-${restaurantId}-${tableNumber}-${oldSession.deviceIp}`;
-      localStorage.removeItem(oldKey);
-    });
+    try {
+      await supabase
+        .from('device_sessions')
+        .delete()
+        .eq('session_token', sessionToken);
 
-    const newSession: DeviceSession = {
-      sessionId: `${restaurantId}-${tableNumber}-${Date.now()}`,
-      deviceIp,
-      tableNumber,
-      restaurantId,
-      startTime: new Date(),
-      isMainDevice: true,
-      expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000)
-    };
-
-    const sessionKey = `table-session-${restaurantId}-${tableNumber}-${deviceIp}`;
-    localStorage.setItem(sessionKey, JSON.stringify(newSession));
-    setSession(newSession);
-    setIsMainDevice(true);
+      setSession(null);
+      setIsMainDevice(false);
+    } catch (error) {
+      console.error('Error ending session:', error);
+    }
   };
 
-  const endSession = () => {
-    if (!restaurantId || !tableNumber) return;
+  const updateOrderData = async (orderData: any[]) => {
+    if (!sessionToken) return;
 
-    // Remove session for this specific device
-    const sessionKey = `table-session-${restaurantId}-${tableNumber}-${deviceIp}`;
-    localStorage.removeItem(sessionKey);
-    setSession(null);
-    setIsMainDevice(false);
+    try {
+      await supabase
+        .from('device_sessions')
+        .update({ 
+          order_data: orderData,
+          last_activity: new Date().toISOString()
+        })
+        .eq('session_token', sessionToken);
+
+      setSession(prev => prev ? { ...prev, orderData } : null);
+    } catch (error) {
+      console.error('Error updating order data:', error);
+    }
   };
 
   const getTimeLeft = (): number => {
@@ -183,6 +236,7 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
     sessionLoading,
     takeOverSession,
     endSession,
+    updateOrderData,
     getTimeLeft
   };
 };

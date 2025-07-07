@@ -14,7 +14,7 @@ import MobileMenuGrid from '@/components/customer/MobileMenuGrid';
 import MobileCartModal from '@/components/customer/MobileCartModal';
 import OrderStatusTracker from '@/components/customer/OrderStatusTracker';
 import OrderHistory from '@/components/customer/OrderHistory';
-import DeviceTakeoverModal from '@/components/customer/DeviceTakeoverModal';
+import DeviceTransferModal from '@/components/customer/DeviceTransferModal';
 
 interface MenuItem {
   id: string;
@@ -45,7 +45,7 @@ const CustomerMenu = () => {
   const [showCart, setShowCart] = useState(false);
   const [showBillDialog, setShowBillDialog] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
-  const [showTakeoverModal, setShowTakeoverModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
   // Device session management
   const { 
@@ -55,6 +55,7 @@ const CustomerMenu = () => {
     sessionLoading, 
     takeOverSession, 
     endSession, 
+    updateOrderData,
     getTimeLeft 
   } = useDeviceSession(restaurantId, tableNumber);
 
@@ -98,10 +99,10 @@ const CustomerMenu = () => {
     return () => clearInterval(timer);
   }, [session, getTimeLeft, endSession, navigate, toast]);
 
-  // Show takeover modal if not main device and has active session from another device
+  // Show transfer modal if not main device and has active session from another device
   useEffect(() => {
     if (!sessionLoading && session && !isMainDevice && session.deviceIp !== deviceIp) {
-      setShowTakeoverModal(true);
+      setShowTransferModal(true);
     }
   }, [session, isMainDevice, sessionLoading, deviceIp]);
 
@@ -243,25 +244,28 @@ const CustomerMenu = () => {
     if (!session || !isMainDevice) {
       toast({
         title: "Not Authorized",
-        description: "Only the main device can place orders. Take control to order.",
+        description: "Only the main device can place orders. Transfer control to order.",
         variant: "destructive",
       });
+      setShowTransferModal(true);
       return;
     }
 
     console.log('Adding to cart:', item.name);
-    setCart(prevCart => {
-      const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
-      if (existingItem) {
-        return prevCart.map((cartItem) =>
+    const newCart = cart.find((cartItem) => cartItem.id === item.id)
+      ? cart.map((cartItem) =>
           cartItem.id === item.id 
             ? { ...cartItem, quantity: cartItem.quantity + 1 } 
             : cartItem
-        );
-      } else {
-        return [...prevCart, { ...item, quantity: 1 }];
-      }
-    });
+        )
+      : [...cart, { ...item, quantity: 1 }];
+    
+    setCart(newCart);
+    
+    // Update order data in the session
+    if (updateOrderData) {
+      updateOrderData(newCart);
+    }
     
     toast({
       title: "Added to Cart",
@@ -270,12 +274,17 @@ const CustomerMenu = () => {
   };
 
   const updateQuantity = (itemId: string, quantity: number) => {
-    if (quantity === 0) {
-      setCart(cart.filter((item) => item.id !== itemId));
-    } else {
-      setCart(cart.map((item) => 
-        item.id === itemId ? { ...item, quantity } : item
-      ));
+    const newCart = quantity === 0
+      ? cart.filter((item) => item.id !== itemId)
+      : cart.map((item) => 
+          item.id === itemId ? { ...item, quantity } : item
+        );
+    
+    setCart(newCart);
+    
+    // Update order data in the session
+    if (updateOrderData) {
+      updateOrderData(newCart);
     }
   };
 
@@ -471,12 +480,14 @@ const CustomerMenu = () => {
         tableNumber={tableNumber!}
       />
 
-      <DeviceTakeoverModal
-        open={showTakeoverModal}
-        onOpenChange={setShowTakeoverModal}
-        onTakeOver={takeOverSession}
+      <DeviceTransferModal
+        open={showTransferModal}
+        onOpenChange={setShowTransferModal}
+        onConfirmTransfer={takeOverSession}
         tableNumber={tableNumber || ''}
+        currentMainDeviceIp={session?.deviceIp || ''}
         currentDeviceIp={deviceIp}
+        orderData={session?.orderData || []}
       />
 
       <AlertDialog open={showBillDialog} onOpenChange={setShowBillDialog}>

@@ -14,6 +14,7 @@ import MobileMenuGrid from '@/components/customer/MobileMenuGrid';
 import MobileCartModal from '@/components/customer/MobileCartModal';
 import OrderStatusTracker from '@/components/customer/OrderStatusTracker';
 import OrderHistory from '@/components/customer/OrderHistory';
+import OrderDetailsModal from '@/components/customer/OrderDetailsModal';
 import DeviceTransferModal from '@/components/customer/DeviceTransferModal';
 
 interface MenuItem {
@@ -440,13 +441,19 @@ const CustomerMenu = () => {
         sessionTimeLeft={sessionTimeLeft}
       />
 
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 space-y-2">
         {session && (
-          <OrderHistory 
-            restaurantId={restaurantId}
-            tableNumber={tableNumber}
-            sessionStartTime={session.startTime}
-          />
+          <>
+            <OrderHistory 
+              restaurantId={restaurantId}
+              tableNumber={tableNumber}
+              sessionStartTime={session.startTime}
+            />
+            <OrderDetailsModal 
+              restaurantId={restaurantId}
+              tableNumber={tableNumber}
+            />
+          </>
         )}
       </div>
 

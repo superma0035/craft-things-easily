@@ -35,10 +35,17 @@ const OrderStatusTracker = ({ restaurantId, tableNumber }: OrderStatusTrackerPro
 
       if (!error && data) {
         setCurrentOrder(data as Order);
+      } else {
+        // No active orders, clear current order
+        setCurrentOrder(null);
       }
     };
 
     fetchLatestOrder();
+    
+    // Set up periodic refresh to auto-hide completed orders
+    const interval = setInterval(fetchLatestOrder, 5000);
+    return () => clearInterval(interval);
   }, [restaurantId, tableNumber]);
 
   // Real-time order status updates

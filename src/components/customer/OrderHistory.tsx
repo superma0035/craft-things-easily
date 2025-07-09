@@ -35,6 +35,10 @@ const OrderHistory = ({ restaurantId, tableNumber, sessionStartTime }: OrderHist
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['session-orders', restaurantId, tableNumber, sessionStartTime],
     queryFn: async () => {
+      // Get today's orders first, then filter by session if needed
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -54,13 +58,13 @@ const OrderHistory = ({ restaurantId, tableNumber, sessionStartTime }: OrderHist
         `)
         .eq('restaurant_id', restaurantId)
         .eq('table_number', tableNumber)
-        .gte('created_at', sessionStartTime.toISOString())
+        .gte('created_at', Math.min(sessionStartTime.getTime(), startOfDay.getTime()).toString())
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as Order[];
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 10000 // Refresh every 10 seconds
   });
 
   const getStatusInfo = (status: Order['status']) => {

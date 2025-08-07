@@ -9,6 +9,7 @@ interface MobileMenuHeaderProps {
   cartItemCount: number;
   onCartClick: () => void;
   sessionTimeLeft: number;
+  customerName?: string;
 }
 
 const MobileMenuHeader = ({ 
@@ -17,7 +18,8 @@ const MobileMenuHeader = ({
   cartTotal, 
   cartItemCount, 
   onCartClick, 
-  sessionTimeLeft 
+  sessionTimeLeft,
+  customerName 
 }: MobileMenuHeaderProps) => {
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -43,7 +45,9 @@ const MobileMenuHeader = ({
               <h1 className="text-lg font-bold text-gray-900 truncate">
                 {restaurant?.name || 'Restaurant'}
               </h1>
-              <p className="text-xs text-gray-600">Table {tableNumber}</p>
+              <p className="text-xs text-gray-600">
+                Table {tableNumber} {customerName && `• ${customerName}`}
+              </p>
             </div>
           </div>
           

@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import CustomerMenu from "./pages/CustomerMenu";
+import QRWelcome from "./pages/QRWelcome";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -47,6 +48,7 @@ const App = () => (
                     <Settings />
                   </ProtectedRoute>
                 } />
+                <Route path="/qr/:restaurantId/:tableNumber" element={<QRWelcome />} />
                 <Route path="/order/:restaurantId/:tableNumber" element={<CustomerMenu />} />
                 <Route path="/menu/:restaurantId/:tableNumber" element={<CustomerMenu />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

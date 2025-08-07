@@ -48,6 +48,9 @@ const CustomerMenu = () => {
   const [connectionError, setConnectionError] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
 
+  // Get customer name from localStorage
+  const [customerName] = useState(() => localStorage.getItem('customer_name') || '');
+
   // Device session management
   const { 
     session, 
@@ -374,8 +377,14 @@ const CustomerMenu = () => {
     navigate('/');
   };
 
-  // Early return for missing params
+  // Early return for missing params or redirect to QR welcome if no session
   if (!restaurantId || !tableNumber) {
+    return null;
+  }
+
+  // Redirect to QR welcome if no session token
+  if (!sessionLoading && !session && !localStorage.getItem('session_token')) {
+    navigate(`/qr/${restaurantId}/${tableNumber}`);
     return null;
   }
 
@@ -439,6 +448,7 @@ const CustomerMenu = () => {
         cartItemCount={cartItemCount}
         onCartClick={() => setShowCart(true)}
         sessionTimeLeft={sessionTimeLeft}
+        customerName={customerName}
       />
 
       <div className="px-4 pb-4 space-y-2">

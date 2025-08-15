@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { sessionTokenManager, createSupabaseClientWithSession } from '@/lib/supabaseClient';
 
 interface DeviceSession {
   id: string;
@@ -29,14 +30,14 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
         const ip = data.ip;
         setDeviceIp(ip);
         
-        // Create unique session token
-        const token = `${ip}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        // Create unique session token with cryptographic randomness
+        const token = `${ip}-${Date.now()}-${crypto.randomUUID()}`;
         setSessionToken(token);
       } catch (error) {
         console.error('Failed to get IP:', error);
         const fallbackIp = `fallback-${Date.now()}`;
         setDeviceIp(fallbackIp);
-        const token = `${fallbackIp}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const token = `${fallbackIp}-${Date.now()}-${crypto.randomUUID()}`;
         setSessionToken(token);
       }
     };
@@ -88,7 +89,11 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
           setIsMainDevice(false);
         } else {
           // This device can become the main device
-          const { data: newSession, error: createError } = await supabase
+          // Set session token for authentication
+          sessionTokenManager.setSessionToken(sessionToken);
+          const supabaseWithSession = createSupabaseClientWithSession();
+          
+          const { data: newSession, error: createError } = await supabaseWithSession
             .from('device_sessions')
             .insert({
               restaurant_id: restaurantId,
@@ -134,8 +139,12 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
     if (!restaurantId || !tableNumber || !deviceIp || !sessionToken) return;
 
     try {
+      // Set session token for authentication
+      sessionTokenManager.setSessionToken(sessionToken);
+      const supabaseWithSession = createSupabaseClientWithSession();
+      
       // Create new session for this device
-      const { data: newSession, error: createError } = await supabase
+      const { data: newSession, error: createError } = await supabaseWithSession
         .from('device_sessions')
         .insert({
           restaurant_id: restaurantId,
@@ -164,7 +173,7 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
 
       if (currentMainSession) {
         // Transfer main device status using the database function
-        const { data: transferResult, error: transferError } = await supabase
+        const { data: transferResult, error: transferError } = await supabaseWithSession
           .rpc('transfer_main_device', {
             old_session_token: currentMainSession.session_token,
             new_session_token: sessionToken
@@ -176,7 +185,7 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
         }
       } else {
         // No current main device, just update this session to be main
-        await supabase
+        await supabaseWithSession
           .from('device_sessions')
           .update({ is_main_device: true })
           .eq('session_token', sessionToken);
@@ -194,11 +203,15 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
     if (!sessionToken) return;
 
     try {
-      await supabase
+      sessionTokenManager.setSessionToken(sessionToken);
+      const supabaseWithSession = createSupabaseClientWithSession();
+      
+      await supabaseWithSession
         .from('device_sessions')
         .delete()
         .eq('session_token', sessionToken);
 
+      sessionTokenManager.clearSessionToken();
       setSession(null);
       setIsMainDevice(false);
     } catch (error) {
@@ -210,7 +223,10 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
     if (!sessionToken) return;
 
     try {
-      await supabase
+      sessionTokenManager.setSessionToken(sessionToken);
+      const supabaseWithSession = createSupabaseClientWithSession();
+      
+      await supabaseWithSession
         .from('device_sessions')
         .update({ 
           order_data: orderData,

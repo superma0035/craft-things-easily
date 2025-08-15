@@ -557,6 +557,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_session_rate_limit: {
+        Args: { device_ip_input: string }
+        Returns: boolean
+      }
       cleanup_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -567,6 +571,10 @@ export type Database = {
       }
       transfer_main_device: {
         Args: { new_session_token: string; old_session_token: string }
+        Returns: boolean
+      }
+      validate_session_ownership: {
+        Args: { session_token_input: string }
         Returns: boolean
       }
       validate_session_token: {

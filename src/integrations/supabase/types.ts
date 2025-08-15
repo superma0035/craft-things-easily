@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -59,6 +59,13 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "device_sessions_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       menu_categories: {
@@ -98,10 +105,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_menu_categories_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "menu_categories_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_categories_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -162,6 +183,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_menu_items_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "menu_items_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -173,6 +201,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -282,6 +317,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_orders_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_orders_table"
             columns: ["table_id"]
             isOneToOne: false
@@ -293,6 +335,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
             referencedColumns: ["id"]
           },
           {
@@ -452,25 +501,76 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_tables_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tables_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tables_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      restaurants_public: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          is_active: boolean | null
+          logo_url: string | null
+          name: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       cleanup_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_user_sessions: {
+        Args: { user_session_token: string }
+        Returns: undefined
+      }
       transfer_main_device: {
-        Args: { old_session_token: string; new_session_token: string }
+        Args: { new_session_token: string; old_session_token: string }
+        Returns: boolean
+      }
+      validate_session_token: {
+        Args: { token: string }
         Returns: boolean
       }
     }

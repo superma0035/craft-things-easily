@@ -65,10 +65,9 @@ const QRWelcome = () => {
       if (!restaurantId) throw new Error('Restaurant ID is required');
       
       const { data, error } = await supabase
-        .from('restaurants')
+        .from('restaurants_public')
         .select('id, name, description, logo_url')
         .eq('id', restaurantId)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (error) throw new Error(`Restaurant not found: ${error.message}`);

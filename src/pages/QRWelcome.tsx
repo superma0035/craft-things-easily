@@ -84,26 +84,35 @@ const QRWelcome = () => {
     const checkExistingSessions = async () => {
       if (!restaurantId || !tableNumber || !deviceIp) return;
 
+      console.log('Checking existing sessions for:', { restaurantId, tableNumber, deviceIp });
+
       try {
         // Clean up expired sessions first
         await supabase.rpc('cleanup_expired_sessions');
 
-        // Check for active sessions on this table
+        // Check for active sessions on this table - simplified query for better reliability
         const { data, error } = await supabase
           .from('device_sessions')
           .select('*')
           .eq('restaurant_id', restaurantId)
           .eq('table_number', tableNumber)
-          .gte('expires_at', new Date().toISOString())
+          .gt('expires_at', new Date().toISOString())
           .order('created_at', { ascending: false });
+
+        console.log('Session query result:', { data, error });
 
         if (error) {
           console.error('Error checking sessions:', error);
+          // Even if there's an error, proceed to session creation
+          setShowSessionOptions(false);
+          setLoading(false);
           return;
         }
 
         // Filter out sessions from the same device IP
         const otherDeviceSessions = data?.filter(session => session.device_ip !== deviceIp) || [];
+        
+        console.log('Other device sessions found:', otherDeviceSessions.length);
         
         if (otherDeviceSessions.length > 0) {
           setExistingSessions(otherDeviceSessions);
@@ -114,6 +123,8 @@ const QRWelcome = () => {
         }
       } catch (error) {
         console.error('Error in checkExistingSessions:', error);
+        // On any error, proceed to session creation
+        setShowSessionOptions(false);
       } finally {
         setLoading(false);
       }
@@ -137,13 +148,18 @@ const QRWelcome = () => {
       return;
     }
 
+    console.log('Creating new session for:', { restaurantId, tableNumber, deviceIp, customerName });
+
     try {
       // Create session token with device IP and cryptographic randomness
       const sessionToken = `${deviceIp}-${Date.now()}-${crypto.randomUUID()}`;
       const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
 
+      console.log('Generated session token:', sessionToken);
+
       // End any existing sessions for this table if starting new
       if (showSessionOptions) {
+        console.log('Deleting existing sessions for table');
         await supabase
           .from('device_sessions')
           .delete()
@@ -151,7 +167,9 @@ const QRWelcome = () => {
           .eq('table_number', tableNumber!);
       }
 
-      const { error } = await supabase
+      // Insert the new session
+      console.log('Inserting new session');
+      const { data, error } = await supabase
         .from('device_sessions')
         .insert({
           session_token: sessionToken,
@@ -161,13 +179,22 @@ const QRWelcome = () => {
           is_main_device: true,
           expires_at: expiresAt.toISOString(),
           order_data: [],
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      console.log('Session creation result:', { data, error });
+
+      if (error) {
+        console.error('Session creation error:', error);
+        throw error;
+      }
 
       // Store session info in localStorage
       localStorage.setItem('session_token', sessionToken);
       localStorage.setItem('customer_name', customerName);
+
+      console.log('Session stored in localStorage, navigating to menu');
 
       toast({
         title: "Session Created",
@@ -179,7 +206,7 @@ const QRWelcome = () => {
       console.error('Error creating session:', error);
       toast({
         title: "Session Creation Failed",
-        description: "Failed to create new session. Please try again.",
+        description: `Failed to create new session: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
@@ -195,12 +222,16 @@ const QRWelcome = () => {
       return;
     }
 
+    console.log('Joining existing session for:', { restaurantId, tableNumber, deviceIp, customerName });
+
     try {
       // Create session token with device IP and cryptographic randomness
       const sessionToken = `${deviceIp}-${Date.now()}-${crypto.randomUUID()}`;
       const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
 
-      const { error } = await supabase
+      console.log('Generated join session token:', sessionToken);
+
+      const { data, error } = await supabase
         .from('device_sessions')
         .insert({
           session_token: sessionToken,
@@ -210,13 +241,22 @@ const QRWelcome = () => {
           is_main_device: false,
           expires_at: expiresAt.toISOString(),
           order_data: [],
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      console.log('Join session result:', { data, error });
+
+      if (error) {
+        console.error('Join session error:', error);
+        throw error;
+      }
 
       // Store session info in localStorage
       localStorage.setItem('session_token', sessionToken);
       localStorage.setItem('customer_name', customerName);
+
+      console.log('Join session stored in localStorage, navigating to menu');
 
       toast({
         title: "Joined Session",
@@ -228,7 +268,7 @@ const QRWelcome = () => {
       console.error('Error joining session:', error);
       toast({
         title: "Join Session Failed",
-        description: "Failed to join existing session. Please try again.",
+        description: `Failed to join existing session: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }

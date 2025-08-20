@@ -59,13 +59,6 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "device_sessions_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       menu_categories: {
@@ -105,24 +98,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_menu_categories_restaurant"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "menu_categories_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "menu_categories_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -183,13 +162,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_menu_items_restaurant"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "menu_items_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -201,13 +173,6 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "menu_items_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -317,13 +282,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_orders_restaurant"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_orders_table"
             columns: ["table_id"]
             isOneToOne: false
@@ -335,13 +293,6 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
             referencedColumns: ["id"]
           },
           {
@@ -428,6 +379,72 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurants_public: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          id: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      security_audit_log: {
+        Row: {
+          created_at: string
+          device_ip: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          record_id: string | null
+          session_token: string | null
+          table_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_ip?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          record_id?: string | null
+          session_token?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_ip?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          record_id?: string | null
+          session_token?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -501,60 +518,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_tables_restaurant"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "tables_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "tables_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
     }
     Views: {
-      restaurants_public: {
-        Row: {
-          address: string | null
-          created_at: string | null
-          description: string | null
-          id: string | null
-          is_active: boolean | null
-          logo_url: string | null
-          name: string | null
-        }
-        Insert: {
-          address?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          logo_url?: string | null
-          name?: string | null
-        }
-        Update: {
-          address?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          logo_url?: string | null
-          name?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       check_session_rate_limit: {
@@ -567,6 +541,15 @@ export type Database = {
       }
       cleanup_user_sessions: {
         Args: { user_session_token: string }
+        Returns: undefined
+      }
+      log_security_event: {
+        Args: {
+          event_data?: Json
+          event_type: string
+          record_id?: string
+          table_name?: string
+        }
         Returns: undefined
       }
       transfer_main_device: {

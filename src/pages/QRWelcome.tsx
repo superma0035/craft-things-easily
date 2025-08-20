@@ -82,7 +82,7 @@ const QRWelcome = () => {
   // Check for existing sessions
   useEffect(() => {
     const checkExistingSessions = async () => {
-      if (!restaurantId || !tableNumber) return;
+      if (!restaurantId || !tableNumber || !deviceIp) return;
 
       try {
         // Clean up expired sessions first
@@ -102,9 +102,15 @@ const QRWelcome = () => {
           return;
         }
 
-        if (data && data.length > 0) {
-          setExistingSessions(data);
+        // Filter out sessions from the same device IP
+        const otherDeviceSessions = data?.filter(session => session.device_ip !== deviceIp) || [];
+        
+        if (otherDeviceSessions.length > 0) {
+          setExistingSessions(otherDeviceSessions);
           setShowSessionOptions(true);
+        } else {
+          // No other devices, proceed directly to new session creation
+          setShowSessionOptions(false);
         }
       } catch (error) {
         console.error('Error in checkExistingSessions:', error);
@@ -119,7 +125,7 @@ const QRWelcome = () => {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [restaurantId, tableNumber]);
+  }, [restaurantId, tableNumber, deviceIp]);
 
   const handleCreateNewSession = async () => {
     if (!customerName.trim()) {
@@ -132,8 +138,18 @@ const QRWelcome = () => {
     }
 
     try {
-      const sessionToken = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Create session token with device IP and cryptographic randomness
+      const sessionToken = `${deviceIp}-${Date.now()}-${crypto.randomUUID()}`;
       const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+
+      // End any existing sessions for this table if starting new
+      if (showSessionOptions) {
+        await supabase
+          .from('device_sessions')
+          .delete()
+          .eq('restaurant_id', restaurantId!)
+          .eq('table_number', tableNumber!);
+      }
 
       const { error } = await supabase
         .from('device_sessions')
@@ -180,7 +196,8 @@ const QRWelcome = () => {
     }
 
     try {
-      const sessionToken = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Create session token with device IP and cryptographic randomness
+      const sessionToken = `${deviceIp}-${Date.now()}-${crypto.randomUUID()}`;
       const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
 
       const { error } = await supabase

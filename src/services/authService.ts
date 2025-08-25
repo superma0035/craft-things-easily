@@ -29,12 +29,33 @@ class AuthService {
     try {
       console.log('Starting signup process...');
       
+      // Validate required fields
+      if (!email || !password || !fullName || !username) {
+        return { error: { message: 'All fields are required for signup' } };
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return { error: { message: 'Please enter a valid email address' } };
+      }
+
+      // Validate password strength
+      if (password.length < 6) {
+        return { error: { message: 'Password must be at least 6 characters long' } };
+      }
+
       // Check if username already exists
       const { data: existingUser, error: checkError } = await supabase
         .from('profiles')
         .select('username')
         .eq('username', username)
         .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking username:', checkError);
+        return { error: { message: 'Unable to verify username availability. Please try again.' } };
+      }
 
       if (existingUser) {
         return { error: { message: 'Username already exists. Please choose a different username.' } };
@@ -43,7 +64,7 @@ class AuthService {
       const currentDomain = window.location.origin;
       const redirectUrl = `${currentDomain}/auth?message=welcome&email=${encodeURIComponent(email)}`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -57,14 +78,30 @@ class AuthService {
       
       if (error) {
         console.error('Signup error:', error);
+        // Provide more specific error messages
+        if (error.message.includes('User already registered')) {
+          return { error: { message: 'An account with this email already exists. Please try logging in instead.' } };
+        }
+        if (error.message.includes('Password should be')) {
+          return { error: { message: 'Password does not meet security requirements. Please use at least 6 characters.' } };
+        }
+        if (error.message.includes('Invalid email')) {
+          return { error: { message: 'Please enter a valid email address.' } };
+        }
         return { error: { message: error.message } };
+      }
+
+      // Check if user was created but needs email confirmation
+      if (data.user && !data.session) {
+        console.log('Signup successful - email confirmation required');
+        return { error: null };
       }
       
       console.log('Signup successful');
       return { error: null };
     } catch (error: any) {
-      console.error('Signup error:', error);
-      return { error: { message: error.message || 'An error occurred during signup' } };
+      console.error('Unexpected signup error:', error);
+      return { error: { message: error.message || 'An unexpected error occurred during signup. Please try again.' } };
     }
   }
 

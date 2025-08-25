@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { createClientWithSessionHeaders } from '@/lib/sessionHeaders';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -148,6 +149,9 @@ const CustomerMenu = () => {
     console.log('Fetching menu items for restaurant:', restaurantId);
     
     try {
+      // Set restaurant context for menu access
+      await supabase.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
+      
       const { data, error } = await supabase
         .from('menu_items')
         .select('id, name, description, price, image_url')
@@ -182,8 +186,11 @@ const CustomerMenu = () => {
     console.log('Fetching restaurant:', restaurantId);
     
     try {
+      // Set restaurant context for access
+      await supabase.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
+      
       const { data, error } = await supabase
-        .from('restaurants')
+        .from('restaurants_public')
         .select('id, name, description')
         .eq('id', restaurantId)
         .eq('is_active', true)
@@ -308,7 +315,14 @@ const CustomerMenu = () => {
         throw new Error('Missing restaurant or table information');
       }
 
-      console.log('Placing order...');
+      if (!session || !session.sessionToken) {
+        throw new Error('No active session found');
+      }
+
+      console.log('Placing order with session token...');
+      
+      // Create client with session token headers
+      const clientWithHeaders = createClientWithSessionHeaders(session.sessionToken);
       
       const orderData = {
         restaurant_id: restaurantId,
@@ -318,7 +332,7 @@ const CustomerMenu = () => {
         notes: `Order from Table ${tableNumber}`,
       };
 
-      const { data: order, error: orderError } = await supabase
+      const { data: order, error: orderError } = await clientWithHeaders
         .from('orders')
         .insert(orderData)
         .select()
@@ -338,7 +352,7 @@ const CustomerMenu = () => {
         total_price: item.price * item.quantity,
       }));
 
-      const { error: itemsError } = await supabase
+      const { error: itemsError } = await clientWithHeaders
         .from('order_items')
         .insert(orderItems);
 

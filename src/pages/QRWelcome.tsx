@@ -64,6 +64,9 @@ const QRWelcome = () => {
     queryFn: async (): Promise<Restaurant> => {
       if (!restaurantId) throw new Error('Restaurant ID is required');
       
+      // Set restaurant context for menu access
+      await supabase.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
+      
       const { data, error } = await supabase
         .from('restaurants_public')
         .select('id, name, description, logo_url')
@@ -201,7 +204,10 @@ const QRWelcome = () => {
         description: `Welcome ${customerName}! You are now the main device for table ${tableNumber}.`,
       });
 
-      navigate(`/menu/${restaurantId}/${tableNumber}`);
+      // Small delay to ensure session is fully established
+      setTimeout(() => {
+        navigate(`/menu/${restaurantId}/${tableNumber}`);
+      }, 500);
     } catch (error) {
       console.error('Error creating session:', error);
       toast({
@@ -263,7 +269,10 @@ const QRWelcome = () => {
         description: `Welcome ${customerName}! You've joined the existing session for table ${tableNumber}.`,
       });
 
-      navigate(`/menu/${restaurantId}/${tableNumber}`);
+      // Small delay to ensure session is fully established
+      setTimeout(() => {
+        navigate(`/menu/${restaurantId}/${tableNumber}`);
+      }, 500);
     } catch (error) {
       console.error('Error joining session:', error);
       toast({

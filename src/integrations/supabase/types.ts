@@ -61,6 +61,33 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          attempted_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string | null
@@ -539,6 +566,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_stale_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_user_sessions: {
         Args: { user_session_token: string }
         Returns: undefined
@@ -552,6 +583,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_restaurant_context: {
+        Args: { restaurant_uuid: string }
+        Returns: undefined
+      }
       transfer_main_device: {
         Args: { new_session_token: string; old_session_token: string }
         Returns: boolean
@@ -563,6 +598,10 @@ export type Database = {
       validate_session_token: {
         Args: { token: string }
         Returns: boolean
+      }
+      validate_session_token_header: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
     }
     Enums: {

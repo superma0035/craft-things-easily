@@ -3,10 +3,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+/* Production-ready design system with comprehensive theming */
 
 @layer base {
   :root {
+    /* Core theme colors */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -16,26 +17,42 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 45 93% 47%;
+    /* Primary brand colors - Professional orange palette */
+    --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 25 95% 48%;
+    --primary-light: 25 95% 85%;
 
-    --secondary: 210 40% 96.1%;
+    /* Secondary colors */
+    --secondary: 210 40% 98%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-hover: 210 40% 96%;
 
+    /* Muted colors */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 45 93% 95%;
-    --accent-foreground: 45 85% 25%;
+    /* Accent colors */
+    --accent: 25 95% 95%;
+    --accent-foreground: 25 85% 25%;
 
+    /* Status colors */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
+    /* Form elements */
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 45 93% 47%;
+    --ring: 25 95% 53%;
 
-    --radius: 0.5rem;
+    /* Layout */
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -48,6 +65,7 @@
   }
 
   .dark {
+    /* Dark theme */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
@@ -57,11 +75,14 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 45 93% 47%;
+    --primary: 25 95% 53%;
     --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-hover: 25 95% 48%;
+    --primary-light: 25 95% 15%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+    --secondary-hover: 217.2 32.6% 20%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -71,10 +92,16 @@
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 45 93% 47%;
+    --ring: 25 95% 53%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 45 93% 47%;

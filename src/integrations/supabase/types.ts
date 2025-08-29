@@ -558,6 +558,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_profile_update_rate_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       check_session_rate_limit: {
         Args: { device_ip_input: string }
         Returns: boolean
@@ -574,6 +578,10 @@ export type Database = {
         Args: { user_session_token: string }
         Returns: undefined
       }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       log_security_event: {
         Args: {
           event_data?: Json
@@ -589,6 +597,10 @@ export type Database = {
       }
       transfer_main_device: {
         Args: { new_session_token: string; old_session_token: string }
+        Returns: boolean
+      }
+      validate_order_session: {
+        Args: { restaurant_uuid: string; table_num: string }
         Returns: boolean
       }
       validate_session_ownership: {

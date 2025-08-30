@@ -582,6 +582,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_data_access_authorized: {
+        Args: { operation?: string; table_name: string }
+        Returns: boolean
+      }
       log_security_event: {
         Args: {
           event_data?: Json
@@ -597,6 +601,10 @@ export type Database = {
       }
       transfer_main_device: {
         Args: { new_session_token: string; old_session_token: string }
+        Returns: boolean
+      }
+      validate_admin_access: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       validate_order_session: {

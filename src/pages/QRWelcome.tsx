@@ -154,8 +154,8 @@ const QRWelcome = () => {
     console.log('Creating new session for:', { restaurantId, tableNumber, deviceIp, customerName });
 
     try {
-      // Create session token with device IP and cryptographic randomness
-      const sessionToken = `${deviceIp}-${Date.now()}-${crypto.randomUUID()}`;
+      // Create session token with device IP and cryptographic randomness (must include underscores for RLS validation)
+      const sessionToken = `${deviceIp}_${Date.now()}_${crypto.randomUUID()}`;
       const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
 
       console.log('Generated session token:', sessionToken);
@@ -231,11 +231,11 @@ const QRWelcome = () => {
     console.log('Joining existing session for:', { restaurantId, tableNumber, deviceIp, customerName });
 
     try {
-      // Create session token with device IP and cryptographic randomness
-      const sessionToken = `${deviceIp}-${Date.now()}-${crypto.randomUUID()}`;
-      const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+    // Create session token with device IP and cryptographic randomness (must include underscores for RLS validation)
+    const sessionToken = `${deviceIp}_${Date.now()}_${crypto.randomUUID()}`;
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
 
-      console.log('Generated join session token:', sessionToken);
+    console.log('Generated join session token:', sessionToken);
 
       const { data, error } = await supabase
         .from('device_sessions')

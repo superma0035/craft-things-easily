@@ -30,14 +30,14 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
         const ip = data.ip;
         setDeviceIp(ip);
         
-        // Create unique session token with cryptographic randomness
-        const token = `${ip}-${Date.now()}-${crypto.randomUUID()}`;
+        // Create unique session token with cryptographic randomness (must include underscores for RLS validation)
+        const token = `${ip}_${Date.now()}_${crypto.randomUUID()}`;
         setSessionToken(token);
       } catch (error) {
         console.error('Failed to get IP:', error);
         const fallbackIp = `fallback-${Date.now()}`;
         setDeviceIp(fallbackIp);
-        const token = `${fallbackIp}-${Date.now()}-${crypto.randomUUID()}`;
+        const token = `${fallbackIp}_${Date.now()}_${crypto.randomUUID()}`;
         setSessionToken(token);
       }
     };
@@ -66,9 +66,7 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
           .order('created_at', { ascending: true });
 
         if (fetchError) {
-          console.error('Error fetching sessions:', fetchError);
-          setSessionLoading(false);
-          return;
+          console.warn('Error fetching sessions (continuing with new session):', fetchError);
         }
 
         const mainDeviceSession = existingSessions?.find(s => s.is_main_device);

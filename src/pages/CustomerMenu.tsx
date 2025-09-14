@@ -146,13 +146,12 @@ const CustomerMenu = () => {
   const fetchMenuItems = async (): Promise<MenuItem[]> => {
     if (!restaurantId) throw new Error('Restaurant ID is required');
     
-    console.log('Fetching menu items for restaurant:', restaurantId);
+    console.log('Fetching menu items for restaurant with session header:', restaurantId);
     
     try {
-      // Set restaurant context for menu access
-      await supabase.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
+      const client = createClientWithSessionHeaders();
       
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('menu_items')
         .select('id, name, description, price, image_url')
         .eq('restaurant_id', restaurantId)

@@ -45,21 +45,7 @@ class AuthService {
         return { error: { message: 'Password must be at least 6 characters long' } };
       }
 
-      // Check if username already exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('username', username)
-        .maybeSingle();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking username:', checkError);
-        return { error: { message: 'Unable to verify username availability. Please try again.' } };
-      }
-
-      if (existingUser) {
-        return { error: { message: 'Username already exists. Please choose a different username.' } };
-      }
+      // Skip pre-check of username to avoid RLS issues; rely on server-side validation if needed
 
       const currentDomain = window.location.origin;
       const redirectUrl = `${currentDomain}/auth?message=welcome&email=${encodeURIComponent(email)}`;

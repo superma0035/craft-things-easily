@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { createClientWithSessionHeaders } from '@/lib/sessionHeaders';
 import { toast } from 'sonner';
 
 export interface MenuItem {
@@ -27,7 +28,16 @@ export const useMenuItems = (restaurantId?: string) => {
 
       console.log('Fetching menu items for restaurant:', restaurantId);
       
-      const { data, error } = await supabase
+      const client = createClientWithSessionHeaders();
+
+      // Set restaurant context to allow controlled public access
+      try {
+        await client.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
+      } catch (e) {
+        console.warn('set_restaurant_context RPC failed (continuing):', e);
+      }
+      
+      const { data, error } = await client
         .from('menu_items')
         .select('*')
         .eq('restaurant_id', restaurantId)

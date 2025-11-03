@@ -558,30 +558,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_profile_update_rate_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      check_profile_update_rate_limit: { Args: never; Returns: boolean }
       check_session_rate_limit: {
         Args: { device_ip_input: string }
         Returns: boolean
       }
-      cleanup_expired_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_stale_data: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_data: { Args: never; Returns: undefined }
+      cleanup_expired_sessions: { Args: never; Returns: undefined }
+      cleanup_stale_data: { Args: never; Returns: undefined }
       cleanup_user_sessions: {
         Args: { user_session_token: string }
         Returns: undefined
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_admin: { Args: never; Returns: boolean }
       is_data_access_authorized: {
         Args: { operation?: string; table_name: string }
         Returns: boolean
@@ -603,10 +592,7 @@ export type Database = {
         Args: { new_session_token: string; old_session_token: string }
         Returns: boolean
       }
-      validate_admin_access: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      validate_admin_access: { Args: never; Returns: boolean }
       validate_order_session: {
         Args: { restaurant_uuid: string; table_num: string }
         Returns: boolean
@@ -615,14 +601,8 @@ export type Database = {
         Args: { session_token_input: string }
         Returns: boolean
       }
-      validate_session_token: {
-        Args: { token: string }
-        Returns: boolean
-      }
-      validate_session_token_header: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      validate_session_token: { Args: { token: string }; Returns: boolean }
+      validate_session_token_header: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

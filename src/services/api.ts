@@ -5,7 +5,7 @@ type Tables = Database['public']['Tables'];
 
 /**
  * Centralized API service for all database operations
- * Provides type-safe methods with consistent error handling
+ * Provides type-safe methods with consistent error handling and security
  */
 class ApiService {
   private getClient() {
@@ -15,9 +15,14 @@ class ApiService {
   // Restaurant operations
   async getRestaurants() {
     const client = this.getClient();
+    const { data: { user } } = await client.auth.getUser();
+    
+    if (!user) throw new Error('Authentication required');
+
     const { data, error } = await client
       .from('restaurants')
       .select('*')
+      .eq('owner_id', user.id)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
     
@@ -27,9 +32,16 @@ class ApiService {
 
   async createRestaurant(restaurant: Omit<Tables['restaurants']['Insert'], 'id' | 'created_at' | 'updated_at'>) {
     const client = this.getClient();
+    const { data: { user } } = await client.auth.getUser();
+    
+    if (!user) throw new Error('Authentication required');
+
     const { data, error } = await client
       .from('restaurants')
-      .insert(restaurant)
+      .insert({
+        ...restaurant,
+        owner_id: user.id,
+      })
       .select()
       .single();
     
@@ -39,10 +51,15 @@ class ApiService {
 
   async updateRestaurant(id: string, updates: Partial<Tables['restaurants']['Update']>) {
     const client = this.getClient();
+    const { data: { user } } = await client.auth.getUser();
+    
+    if (!user) throw new Error('Authentication required');
+
     const { data, error } = await client
       .from('restaurants')
       .update(updates)
       .eq('id', id)
+      .eq('owner_id', user.id)
       .select()
       .single();
     
@@ -85,6 +102,20 @@ class ApiService {
   // Order operations
   async getOrders(restaurantId: string, date?: string) {
     const client = this.getClient();
+    const { data: { user } } = await client.auth.getUser();
+    
+    if (!user) throw new Error('Authentication required');
+
+    // Verify user owns the restaurant
+    const { data: restaurant } = await client
+      .from('restaurants')
+      .select('id')
+      .eq('id', restaurantId)
+      .eq('owner_id', user.id)
+      .maybeSingle();
+
+    if (!restaurant) throw new Error('Unauthorized access to restaurant orders');
+
     let query = client
       .from('orders')
       .select(`
@@ -117,6 +148,29 @@ class ApiService {
 
   async updateOrderStatus(orderId: string, status: string) {
     const client = this.getClient();
+    const { data: { user } } = await client.auth.getUser();
+    
+    if (!user) throw new Error('Authentication required');
+
+    // First get the order to verify ownership
+    const { data: order } = await client
+      .from('orders')
+      .select('restaurant_id')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (!order) throw new Error('Order not found');
+
+    // Verify user owns the restaurant
+    const { data: restaurant } = await client
+      .from('restaurants')
+      .select('id')
+      .eq('id', order.restaurant_id)
+      .eq('owner_id', user.id)
+      .maybeSingle();
+
+    if (!restaurant) throw new Error('Unauthorized access to order');
+
     const { data, error } = await client
       .from('orders')
       .update({ status, updated_at: new Date().toISOString() })

@@ -24,6 +24,24 @@ export const useTables = (restaurantId: string | undefined) => {
     queryKey: ['tables', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return [];
+
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User must be authenticated');
+      }
+
+      // Verify restaurant ownership
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('id', restaurantId)
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (!restaurant) {
+        throw new Error('Unauthorized access to restaurant tables');
+      }
       
       const { data, error } = await supabase
         .from('tables')

@@ -28,9 +28,16 @@ export const useRestaurants = () => {
   return useQuery({
     queryKey: ['restaurants'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User must be authenticated to view restaurants');
+      }
+
       const { data, error } = await supabase
         .from('restaurants')
         .select('*')
+        .eq('owner_id', user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 

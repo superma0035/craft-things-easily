@@ -1,4 +1,4 @@
-import { createClientWithSessionHeaders } from '@/lib/sessionHeaders';
+import { supabase } from '@/lib/supabase';
 import type { Database } from '@/integrations/supabase/types';
 
 type Tables = Database['public']['Tables'];
@@ -9,7 +9,7 @@ type Tables = Database['public']['Tables'];
  */
 class ApiService {
   private getClient() {
-    return createClientWithSessionHeaders();
+    return supabase;
   }
 
   // Restaurant operations

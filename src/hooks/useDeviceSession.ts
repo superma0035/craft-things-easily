@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { sessionTokenManager, createSupabaseClientWithSession } from '@/lib/supabaseClient';
-import { setSessionToken as storeSessionToken, clearSessionToken as removeSessionToken } from '@/lib/sessionHeaders';
+import { supabase, createClientWithSession, sessionStorage } from '@/lib/supabase';
 
 interface DeviceSession {
   id: string;
@@ -74,9 +72,8 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
 
         if (mainDeviceSession && mainDeviceSession.device_ip !== deviceIp) {
           // Another device is the main device -> create a non-main session for this device
-          sessionTokenManager.setSessionToken(sessionToken);
-          storeSessionToken(sessionToken);
-          const supabaseWithSession = createSupabaseClientWithSession();
+          sessionStorage.setToken(sessionToken);
+          const supabaseWithSession = createClientWithSession(sessionToken);
 
           const { data: joinedSession, error: joinError } = await supabaseWithSession
             .from('device_sessions')
@@ -112,9 +109,8 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
         } else {
         // This device can become the main device
         // Set session token for authentication
-        sessionTokenManager.setSessionToken(sessionToken);
-        storeSessionToken(sessionToken);
-        const supabaseWithSession = createSupabaseClientWithSession();
+        sessionStorage.setToken(sessionToken);
+        const supabaseWithSession = createClientWithSession(sessionToken);
         
         const { data: newSession, error: createError } = await supabaseWithSession
           .from('device_sessions')
@@ -163,8 +159,8 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
 
     try {
       // Set session token for authentication
-      sessionTokenManager.setSessionToken(sessionToken);
-      const supabaseWithSession = createSupabaseClientWithSession();
+      sessionStorage.setToken(sessionToken);
+      const supabaseWithSession = createClientWithSession(sessionToken);
       
       // Create new session for this device
       const { data: newSession, error: createError } = await supabaseWithSession
@@ -186,7 +182,7 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
       }
 
       // Persist token for downstream requests
-      storeSessionToken(sessionToken);
+      sessionStorage.setToken(sessionToken);
 
 
       // Find the current main device session
@@ -230,16 +226,15 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
     if (!sessionToken) return;
 
     try {
-      sessionTokenManager.setSessionToken(sessionToken);
-      const supabaseWithSession = createSupabaseClientWithSession();
+      sessionStorage.setToken(sessionToken);
+      const supabaseWithSession = createClientWithSession(sessionToken);
       
       await supabaseWithSession
         .from('device_sessions')
         .delete()
         .eq('session_token', sessionToken);
 
-      sessionTokenManager.clearSessionToken();
-      removeSessionToken();
+      sessionStorage.clearToken();
       setSession(null);
       setIsMainDevice(false);
     } catch (error) {
@@ -251,8 +246,8 @@ export const useDeviceSession = (restaurantId?: string, tableNumber?: string) =>
     if (!sessionToken) return;
 
     try {
-      sessionTokenManager.setSessionToken(sessionToken);
-      const supabaseWithSession = createSupabaseClientWithSession();
+      sessionStorage.setToken(sessionToken);
+      const supabaseWithSession = createClientWithSession(sessionToken);
       
       await supabaseWithSession
         .from('device_sessions')

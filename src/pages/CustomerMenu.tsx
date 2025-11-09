@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { createClientWithSessionHeaders } from '@/lib/sessionHeaders';
+import { supabase, createClientWithSession } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -149,7 +148,10 @@ const CustomerMenu = () => {
     console.log('Fetching menu items for restaurant with session header:', restaurantId);
     
     try {
-      const client = createClientWithSessionHeaders();
+      // Set restaurant context for RLS
+      await supabase.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
+      
+      const client = createClientWithSession();
       
       const { data, error } = await client
         .from('menu_items')
@@ -321,7 +323,7 @@ const CustomerMenu = () => {
       console.log('Placing order with session token...');
       
       // Create client with session token headers
-      const clientWithHeaders = createClientWithSessionHeaders(session.sessionToken);
+      const clientWithHeaders = createClientWithSession(session.sessionToken);
       
       const orderData = {
         restaurant_id: restaurantId,

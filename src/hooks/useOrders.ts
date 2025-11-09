@@ -21,6 +21,24 @@ export const useTodaysOrders = (restaurantId: string | undefined) => {
     queryKey: ['todays-orders', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return [];
+
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User must be authenticated');
+      }
+
+      // Verify restaurant ownership
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('id', restaurantId)
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (!restaurant) {
+        throw new Error('Unauthorized access to restaurant orders');
+      }
       
       const today = new Date().toISOString().split('T')[0];
       
@@ -45,6 +63,35 @@ export const useUpdateOrderStatus = () => {
 
   return useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string; status: Order['status'] }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User must be authenticated');
+      }
+
+      // First get the order to verify ownership
+      const { data: order } = await supabase
+        .from('orders')
+        .select('restaurant_id')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      // Verify restaurant ownership
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('id', order.restaurant_id)
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (!restaurant) {
+        throw new Error('Unauthorized access to order');
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .update({ status, updated_at: new Date().toISOString() })

@@ -64,19 +64,14 @@ const QRWelcome = () => {
     queryFn: async (): Promise<Restaurant> => {
       if (!restaurantId) throw new Error('Restaurant ID is required');
       
-      // Set restaurant context for menu access
-      await supabase.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
+      // Use secure RPC to fetch public restaurant metadata
+      const { data, error } = await supabase.rpc('get_public_restaurant', { restaurant_uuid: restaurantId });
       
-      const { data, error } = await supabase
-        .from('restaurants_public')
-        .select('id, name, description, logo_url')
-        .eq('id', restaurantId)
-        .maybeSingle();
-
       if (error) throw new Error(`Restaurant not found: ${error.message}`);
-      if (!data) throw new Error('Restaurant not found or is inactive');
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) throw new Error('Restaurant not found or is inactive');
 
-      return data as Restaurant;
+      return row as Restaurant;
     },
     enabled: !!restaurantId,
     retry: 2,

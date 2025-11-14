@@ -570,6 +570,15 @@ export type Database = {
         Args: { user_session_token: string }
         Returns: undefined
       }
+      get_public_restaurant: {
+        Args: { restaurant_uuid: string }
+        Returns: {
+          description: string
+          id: string
+          logo_url: string
+          name: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_data_access_authorized: {
         Args: { operation?: string; table_name: string }

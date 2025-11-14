@@ -187,15 +187,8 @@ const CustomerMenu = () => {
     console.log('Fetching restaurant:', restaurantId);
     
     try {
-      // Set restaurant context for access
-      await supabase.rpc('set_restaurant_context', { restaurant_uuid: restaurantId });
-      
       const { data, error } = await supabase
-        .from('restaurants_public')
-        .select('id, name, description')
-        .eq('id', restaurantId)
-        .eq('is_active', true)
-        .maybeSingle();
+        .rpc('get_public_restaurant', { restaurant_uuid: restaurantId });
 
       if (error) {
         console.error('Supabase error fetching restaurant:', error);
@@ -203,13 +196,14 @@ const CustomerMenu = () => {
         throw new Error(`Restaurant not found: ${error.message}`);
       }
 
-      if (!data) {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) {
         throw new Error('Restaurant not found or is inactive');
       }
 
-      console.log('Restaurant fetched successfully:', data.name);
+      console.log('Restaurant fetched successfully:', row.name);
       setConnectionError(false);
-      return data as Restaurant;
+      return row as Restaurant;
     } catch (error) {
       console.error('Error in fetchRestaurant:', error);
       setConnectionError(true);
